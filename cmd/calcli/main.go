@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"calcli/internal/app"
+	"calcli/internal/storage/vdir"
 )
 
 func main() {
@@ -40,9 +41,9 @@ func main() {
 
 	switch command {
 	case "list":
-		lister := &app.HardcodedEventLister{}
+		reader := vdir.NewReader(os.DirFS(os.Getenv("HOME")), ".calcli/home")
 		formatter := &app.SimpleEventFormatter{}
-		if err := app.ListHandler(lister, formatter, os.Stdout); err != nil {
+		if err := app.ListHandler(reader, formatter, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
