@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"calcli/internal/app"
 )
 
 func main() {
@@ -38,7 +40,12 @@ func main() {
 
 	switch command {
 	case "list":
-		fmt.Println("list command - not implemented yet")
+		lister := &app.HardcodedEventLister{}
+		formatter := &app.SimpleEventFormatter{}
+		if err := app.ListHandler(lister, formatter, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	case "new":
 		fmt.Println("new command - not implemented yet")
 	case "search":
