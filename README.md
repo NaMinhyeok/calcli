@@ -32,12 +32,24 @@ There are multiple ways to install `calcli`:
 If you have a Go environment set up, this is the simplest method.
 
 ```bash
-go install github.com/naminhyeok/calcli/cmd/calcli@latest
+go install github.com/NaMinhyeok/calcli/cmd/calcli@latest
+```
+
+**Note:** If you get a "command not found" error after installation, you need to add Go's bin directory to your PATH:
+
+```bash
+# For bash users
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# For zsh users (macOS default)
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 #### 2. From GitHub Releases (For non-Go users)
 
-Pre-compiled binaries for various operating systems are available on the [Releases Page](https://github.com/naminhyeok/calcli/releases). Download the appropriate archive for your system, extract it, and place the `calcli` binary in a directory included in your system's `PATH`.
+Pre-compiled binaries for various operating systems are available on the [Releases Page](https://github.com/NaMinhyeok/calcli/releases). Download the appropriate archive for your system, extract it, and place the `calcli` binary in a directory included in your system's `PATH`.
 
 ## Usage
 
