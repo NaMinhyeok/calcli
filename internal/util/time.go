@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// ParseDate parses date strings in various formats
 func ParseDate(date string) (time.Time, error) {
 	if date == "today" {
 		now := time.Now()
@@ -16,9 +15,7 @@ func ParseDate(date string) (time.Time, error) {
 	return time.Parse("2006-01-02", date)
 }
 
-// ParseTime parses time strings with TimeProvider injection
 func ParseTime(when string, timeProvider TimeProvider) (time.Time, error) {
-	// Try different formats
 	formats := []string{
 		"2006-01-02 15:04",
 		"2006-01-02T15:04",
@@ -39,7 +36,12 @@ func ParseTime(when string, timeProvider TimeProvider) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unsupported time format: %s", when)
 }
 
-// TimeProvider interface for dependency injection
 type TimeProvider interface {
 	Now() time.Time
+}
+
+type RealTimeProvider struct{}
+
+func (t *RealTimeProvider) Now() time.Time {
+	return time.Now()
 }

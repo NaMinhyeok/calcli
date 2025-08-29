@@ -89,20 +89,17 @@ func main() {
 			os.Exit(1)
 		}
 	case "new":
-		// Parse flags for new command
-		title := "New Event"
-		when := time.Now().Format("15:04")
-		duration := "1h"
+		newFlags := flag.NewFlagSet("new", flag.ExitOnError)
+		titleFlag := newFlags.String("title", "New Event", "Event title")
+		whenFlag := newFlags.String("when", time.Now().Format("15:04"), "Event start time")
+		durationFlag := newFlags.String("duration", "1h", "Event duration")
+		locationFlag := newFlags.String("location", "", "Event location")
+		newFlags.Parse(flag.Args()[1:])
 
-		if flag.NArg() > 1 {
-			title = flag.Arg(1)
-		}
-		if flag.NArg() > 2 {
-			when = flag.Arg(2)
-		}
-		if flag.NArg() > 3 {
-			duration = flag.Arg(3)
-		}
+		title := *titleFlag
+		when := *whenFlag
+		duration := *durationFlag
+		location := *locationFlag
 
 		// Load config to get calendar path
 		cfg, err := config.Load(config.GetDefaultConfigPath())
@@ -119,9 +116,9 @@ func main() {
 
 		// Create writer and handle new event
 		writer := vdir.NewWriter(calendar.Path)
-		timeProvider := &app.RealTimeProvider{}
+		timeProvider := &util.RealTimeProvider{}
 		uidGen := &app.RealUIDGenerator{}
-		if err := app.NewHandler(writer, timeProvider, uidGen, title, when, duration); err != nil {
+		if err := app.NewHandler(writer, timeProvider, uidGen, title, when, duration, location); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

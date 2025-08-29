@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"calcli/internal/domain"
+	"calcli/internal/testutil"
 )
 
 // Test doubles
@@ -20,14 +21,6 @@ func (f *FakeEventCreator) CreateEvent(event domain.Event) error {
 	}
 	f.events = append(f.events, event)
 	return nil
-}
-
-type StubTimeProvider struct {
-	fixedTime time.Time
-}
-
-func (s *StubTimeProvider) Now() time.Time {
-	return s.fixedTime
 }
 
 type StubUIDGenerator struct {
@@ -45,6 +38,7 @@ func TestNewHandler(t *testing.T) {
 		title         string
 		when          string
 		duration      string
+		location      string
 		fixedTime     time.Time
 		uid           string
 		createErr     error
@@ -59,6 +53,7 @@ func TestNewHandler(t *testing.T) {
 			title:         "Test Meeting",
 			when:          "2025-08-30 14:00",
 			duration:      "1h",
+			location:      "Conference Room",
 			fixedTime:     time.Date(2025, 8, 29, 10, 0, 0, 0, time.UTC),
 			uid:           "test-uid-123",
 			expectedUID:   "test-uid-123",
@@ -70,6 +65,7 @@ func TestNewHandler(t *testing.T) {
 			title:         "Daily Standup",
 			when:          "09:00",
 			duration:      "30m",
+			location:      "",
 			fixedTime:     time.Date(2025, 8, 29, 10, 0, 0, 0, time.Local),
 			uid:           "standup-uid",
 			expectedUID:   "standup-uid",
@@ -81,6 +77,7 @@ func TestNewHandler(t *testing.T) {
 			title:         "Quick Chat",
 			when:          "2025-09-01 16:00",
 			duration:      "",
+			location:      "",
 			fixedTime:     time.Date(2025, 8, 29, 10, 0, 0, 0, time.UTC),
 			uid:           "chat-uid",
 			expectedUID:   "chat-uid",
@@ -92,6 +89,7 @@ func TestNewHandler(t *testing.T) {
 			title:     "Bad Time",
 			when:      "invalid-time",
 			duration:  "1h",
+			location:  "",
 			fixedTime: time.Date(2025, 8, 29, 10, 0, 0, 0, time.UTC),
 			uid:       "bad-uid",
 			expectErr: true,
@@ -101,6 +99,7 @@ func TestNewHandler(t *testing.T) {
 			title:     "Bad Duration",
 			when:      "2025-08-30 14:00",
 			duration:  "invalid-duration",
+			location:  "",
 			fixedTime: time.Date(2025, 8, 29, 10, 0, 0, 0, time.UTC),
 			uid:       "bad-duration-uid",
 			expectErr: true,
@@ -110,6 +109,7 @@ func TestNewHandler(t *testing.T) {
 			title:     "UID Fail",
 			when:      "2025-08-30 14:00",
 			duration:  "1h",
+			location:  "",
 			fixedTime: time.Date(2025, 8, 29, 10, 0, 0, 0, time.UTC),
 			uidErr:    fmt.Errorf("UID generation failed"),
 			expectErr: true,
@@ -119,6 +119,7 @@ func TestNewHandler(t *testing.T) {
 			title:     "Create Fail",
 			when:      "2025-08-30 14:00",
 			duration:  "1h",
+			location:  "",
 			fixedTime: time.Date(2025, 8, 29, 10, 0, 0, 0, time.UTC),
 			uid:       "fail-uid",
 			createErr: fmt.Errorf("storage error"),
@@ -129,10 +130,10 @@ func TestNewHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			creator := &FakeEventCreator{err: tt.createErr}
-			timeProvider := &StubTimeProvider{fixedTime: tt.fixedTime}
+			timeProvider := &testutil.StubTimeProvider{FixedTime: tt.fixedTime}
 			uidGen := &StubUIDGenerator{uid: tt.uid, err: tt.uidErr}
 
-			err := NewHandler(creator, timeProvider, uidGen, tt.title, tt.when, tt.duration)
+			err := NewHandler(creator, timeProvider, uidGen, tt.title, tt.when, tt.duration, tt.location)
 
 			if tt.expectErr {
 				if err == nil {
@@ -171,61 +172,6 @@ func TestNewHandler(t *testing.T) {
 
 			if event.AllDay != false {
 				t.Errorf("expected AllDay to be false, got %v", event.AllDay)
-			}
-		})
-	}
-}
-
-func TestParseTime(t *testing.T) {
-	fixedTime := time.Date(2025, 8, 29, 10, 30, 0, 0, time.Local)
-	timeProvider := &StubTimeProvider{fixedTime: fixedTime}
-
-	tests := []struct {
-		name     string
-		input    string
-		expected time.Time
-		hasError bool
-	}{
-		{
-			name:     "full date and time",
-			input:    "2025-08-30 14:00",
-			expected: time.Date(2025, 8, 30, 14, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "ISO format",
-			input:    "2025-08-30T14:00",
-			expected: time.Date(2025, 8, 30, 14, 0, 0, 0, time.UTC),
-		},
-		{
-			name:     "time only uses current date",
-			input:    "15:30",
-			expected: time.Date(2025, 8, 29, 15, 30, 0, 0, time.Local),
-		},
-		{
-			name:     "invalid format",
-			input:    "invalid",
-			hasError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseTime(tt.input, timeProvider)
-
-			if tt.hasError {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("expected no error but got: %v", err)
-				return
-			}
-
-			if !result.Equal(tt.expected) {
-				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
 		})
 	}
