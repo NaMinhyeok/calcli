@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"calcli/internal/app"
+	"calcli/internal/config"
 	"calcli/internal/storage/vdir"
 )
 
@@ -41,7 +42,22 @@ func main() {
 
 	switch command {
 	case "list":
-		reader := vdir.NewReader(os.DirFS(os.Getenv("HOME")), ".calcli/home")
+		// Load configuration
+		cfg, err := config.Load(config.GetDefaultConfigPath())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Get default calendar
+		calendar, err := cfg.GetDefaultCalendar()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Use calendar path from config
+		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
 		formatter := &app.SimpleEventFormatter{}
 		if err := app.ListHandler(reader, formatter, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
