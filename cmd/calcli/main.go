@@ -9,6 +9,7 @@ import (
 	"calcli/internal/app"
 	"calcli/internal/config"
 	"calcli/internal/storage/vdir"
+	"calcli/internal/util"
 )
 
 func main() {
@@ -43,6 +44,29 @@ func main() {
 
 	switch command {
 	case "list":
+		listFlags := flag.NewFlagSet("list", flag.ExitOnError)
+		fromFlag := listFlags.String("from", "", "Start date (YYYY-MM-DD or 'today')")
+		toFlag := listFlags.String("to", "", "End date (YYYY-MM-DD or 'today')")
+		listFlags.Parse(flag.Args()[1:])
+
+		var fromTime, toTime *time.Time
+		if *fromFlag != "" {
+			t, err := util.ParseDate(*fromFlag)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Invalid from date: %v\n", err)
+				os.Exit(2)
+			}
+			fromTime = &t
+		}
+		if *toFlag != "" {
+			t, err := util.ParseDate(*toFlag)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Invalid to date: %v\n", err)
+				os.Exit(2)
+			}
+			toTime = &t
+		}
+
 		// Load configuration
 		cfg, err := config.Load(config.GetDefaultConfigPath())
 		if err != nil {
@@ -60,7 +84,7 @@ func main() {
 		// Use calendar path from config
 		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
 		formatter := &app.SimpleEventFormatter{}
-		if err := app.ListHandler(reader, formatter, os.Stdout); err != nil {
+		if err := app.ListHandler(reader, formatter, os.Stdout, fromTime, toTime); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

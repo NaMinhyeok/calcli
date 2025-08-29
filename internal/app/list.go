@@ -59,12 +59,38 @@ func (s SimpleEventFormatter) FormatEvents(events []domain.Event, w io.Writer) {
 	}
 }
 
-func ListHandler(lister EventLister, formatter EventFormatter, w io.Writer) error {
+func ListHandler(lister EventLister, formatter EventFormatter, w io.Writer, from, to *time.Time) error {
 	events, err := lister.ListEvents()
 	if err != nil {
 		return err
 	}
 
-	formatter.FormatEvents(events, w)
+	var filteredEvents []domain.Event
+	for _, event := range events {
+		if shouldIncludeEvent(event, from, to) {
+			filteredEvents = append(filteredEvents, event)
+		}
+	}
+
+	formatter.FormatEvents(filteredEvents, w)
 	return nil
+}
+
+func shouldIncludeEvent(event domain.Event, from, to *time.Time) bool {
+	if from == nil && to == nil {
+		return true
+	}
+
+	eventStart := event.Start
+	eventEnd := event.End
+
+	if from != nil && eventEnd.Before(*from) {
+		return false
+	}
+
+	if to != nil && eventStart.After(*to) {
+		return false
+	}
+
+	return true
 }
