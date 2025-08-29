@@ -108,7 +108,16 @@ func main() {
 	case "import":
 		fmt.Println("import command - not implemented yet")
 	case "calendars":
-		fmt.Println("calendars command - not implemented yet")
+		cfg, err := config.Load(config.GetDefaultConfigPath())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if err := app.CalendarsHandler(cfg, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
 		flag.Usage()

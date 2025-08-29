@@ -48,7 +48,7 @@ func TestCLI(t *testing.T) {
 		{
 			name:       "calendars command",
 			args:       []string{"calendars"},
-			wantStdout: "calendars command - not implemented yet",
+			wantStdout: "home:",
 			wantExit:   0,
 		},
 		{
