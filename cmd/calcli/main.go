@@ -104,7 +104,31 @@ func main() {
 
 		fmt.Printf("Event '%s' created successfully\n", title)
 	case "search":
-		fmt.Println("search command - not implemented yet")
+		if flag.NArg() < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: %s search <query>\n", os.Args[0])
+			os.Exit(2)
+		}
+
+		query := flag.Arg(1)
+
+		cfg, err := config.Load(config.GetDefaultConfigPath())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			os.Exit(1)
+		}
+
+		calendar, err := cfg.GetDefaultCalendar()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
+			os.Exit(1)
+		}
+
+		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
+		formatter := &app.SimpleEventFormatter{}
+		if err := app.SearchHandler(reader, formatter, os.Stdout, query, app.SearchFieldAny); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	case "import":
 		fmt.Println("import command - not implemented yet")
 	case "calendars":

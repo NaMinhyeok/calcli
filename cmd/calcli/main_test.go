@@ -52,6 +52,12 @@ func TestCLI(t *testing.T) {
 			wantExit:   0,
 		},
 		{
+			name:       "search command",
+			args:       []string{"search", "Event"},
+			wantStdout: "Test Event",
+			wantExit:   0,
+		},
+		{
 			name:       "unknown command",
 			args:       []string{"unknown"},
 			wantStderr: "Unknown command: unknown",
