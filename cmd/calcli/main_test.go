@@ -58,6 +58,12 @@ func TestCLI(t *testing.T) {
 			wantExit:   0,
 		},
 		{
+			name:       "import command requires file",
+			args:       []string{"import"},
+			wantStderr: "Usage:",
+			wantExit:   1,
+		},
+		{
 			name:       "unknown command",
 			args:       []string{"unknown"},
 			wantStderr: "Unknown command: unknown",

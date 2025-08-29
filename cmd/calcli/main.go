@@ -130,7 +130,34 @@ func main() {
 			os.Exit(1)
 		}
 	case "import":
-		fmt.Println("import command - not implemented yet")
+		if flag.NArg() < 2 {
+			fmt.Fprintf(os.Stderr, "Usage: %s import <file.ics>\n", os.Args[0])
+			os.Exit(2)
+		}
+
+		filePath := flag.Arg(1)
+
+		// Load config
+		cfg, err := config.Load(config.GetDefaultConfigPath())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			os.Exit(1)
+		}
+
+		calendar, err := cfg.GetDefaultCalendar()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Create importer and UID generator
+		writer := vdir.NewWriter(calendar.Path)
+		uidGen := &app.RealUIDGenerator{}
+
+		if err := app.ImportHandler(writer, uidGen, filePath, false); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	case "calendars":
 		cfg, err := config.Load(config.GetDefaultConfigPath())
 		if err != nil {
