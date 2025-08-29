@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"calcli/internal/app"
 	"calcli/internal/config"
@@ -64,7 +65,44 @@ func main() {
 			os.Exit(1)
 		}
 	case "new":
-		fmt.Println("new command - not implemented yet")
+		// Parse flags for new command
+		title := "New Event"
+		when := time.Now().Format("15:04")
+		duration := "1h"
+
+		if flag.NArg() > 1 {
+			title = flag.Arg(1)
+		}
+		if flag.NArg() > 2 {
+			when = flag.Arg(2)
+		}
+		if flag.NArg() > 3 {
+			duration = flag.Arg(3)
+		}
+
+		// Load config to get calendar path
+		cfg, err := config.Load(config.GetDefaultConfigPath())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+			os.Exit(1)
+		}
+
+		calendar, err := cfg.GetDefaultCalendar()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Create writer and handle new event
+		writer := vdir.NewWriter(calendar.Path)
+		timeProvider := &app.RealTimeProvider{}
+		uidGen := &app.RealUIDGenerator{}
+		if err := app.NewHandler(writer, timeProvider, uidGen, title, when, duration); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Event '%s' created successfully\n", title)
 	case "search":
 		fmt.Println("search command - not implemented yet")
 	case "import":
