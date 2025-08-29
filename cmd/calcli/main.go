@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"calcli/internal/app"
-	"calcli/internal/config"
-	"calcli/internal/storage/vdir"
-	"calcli/internal/util"
+	"github.com/NaMinhyeok/calcli/internal/app"
+	"github.com/NaMinhyeok/calcli/internal/config"
+	"github.com/NaMinhyeok/calcli/internal/storage/vdir"
+	"github.com/NaMinhyeok/calcli/internal/util"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("calcli v0.1.0")
+		fmt.Println("calcli v0.0.3")
 		os.Exit(0)
 	}
 

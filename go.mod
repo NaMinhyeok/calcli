@@ -1,4 +1,4 @@
-module github.com/naminhyeok/calcli
+module github.com/NaMinhyeok/calcli
 
 go 1.25
 

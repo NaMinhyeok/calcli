@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"calcli/internal/config"
+	"github.com/NaMinhyeok/calcli/internal/config"
 )
 
 func TestCalendarsHandler(t *testing.T) {

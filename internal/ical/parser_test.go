@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 func TestParseEvents(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"calcli/internal/config"
+	"github.com/NaMinhyeok/calcli/internal/config"
 )
 
 func CalendarsHandler(cfg *config.Config, output io.Writer) error {

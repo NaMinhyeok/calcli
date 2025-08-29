@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"calcli/internal/domain"
-	"calcli/internal/testutil"
+	"github.com/NaMinhyeok/calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/testutil"
 )
 
 // Test doubles

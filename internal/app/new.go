@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"calcli/internal/domain"
-	"calcli/internal/util"
+	"github.com/NaMinhyeok/calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/util"
 )
 
 type EventCreator interface {

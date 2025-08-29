@@ -32,7 +32,7 @@ There are multiple ways to install `calcli`:
 If you have a Go environment set up, this is the simplest method.
 
 ```bash
-go install github.com/naminhyeok/calcli@latest
+go install github.com/naminhyeok/calcli/cmd/calcli@latest
 ```
 
 #### 2. From GitHub Releases (For non-Go users)

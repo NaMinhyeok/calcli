@@ -4,7 +4,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 func TestReader_ListEvents(t *testing.T) {

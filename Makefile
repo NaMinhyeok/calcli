@@ -30,7 +30,7 @@ clean:
 	rm -rf bin/
 
 install:
-	go install cmd/calcli/main.go
+	go install ./cmd/calcli
 
 dev: fmt vet test
 	@echo "Development checks passed!"

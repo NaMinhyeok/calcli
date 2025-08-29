@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"calcli/internal/domain"
-	"calcli/internal/ical"
+	"github.com/NaMinhyeok/calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/ical"
 )
 
 type EventImporter interface {

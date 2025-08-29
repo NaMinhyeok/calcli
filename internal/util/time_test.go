@@ -1,7 +1,7 @@
 package util
 
 import (
-	"calcli/internal/testutil"
+	"github.com/NaMinhyeok/calcli/internal/testutil"
 	"testing"
 	"time"
 )

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 type Config struct {

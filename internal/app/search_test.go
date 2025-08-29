@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 type FakeEventSearcher struct {

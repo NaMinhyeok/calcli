@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 type FakeEventImporter struct {

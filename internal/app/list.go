@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 type EventLister interface {

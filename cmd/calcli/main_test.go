@@ -18,7 +18,7 @@ func TestCLI(t *testing.T) {
 		{
 			name:       "version flag",
 			args:       []string{"--version"},
-			wantStdout: "calcli v0.1.0",
+			wantStdout: "calcli v0.0.3",
 			wantExit:   0,
 		},
 		{

@@ -4,7 +4,7 @@ import (
 	"io"
 	"strings"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 )
 
 type EventSearcher interface {

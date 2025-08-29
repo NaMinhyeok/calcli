@@ -3,7 +3,7 @@ package ical
 import (
 	"io"
 
-	"calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 
 	"github.com/arran4/golang-ical"
 )
