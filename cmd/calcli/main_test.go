@@ -36,13 +36,13 @@ func TestCLI(t *testing.T) {
 		{
 			name:       "list command",
 			args:       []string{"list"},
-			wantStdout: "list command - not implemented yet",
+			wantStdout: "Team Standup",
 			wantExit:   0,
 		},
 		{
 			name:       "new command",
 			args:       []string{"new"},
-			wantStdout: "new command - not implemented yet",
+			wantStdout: "Event 'New Event' created successfully",
 			wantExit:   0,
 		},
 		{
