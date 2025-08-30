@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/NaMinhyeok/calcli/internal/domain"
-	"github.com/NaMinhyeok/calcli/internal/testutil"
 )
 
 // Test doubles
@@ -30,6 +29,14 @@ type StubUIDGenerator struct {
 
 func (s *StubUIDGenerator) Generate() (string, error) {
 	return s.uid, s.err
+}
+
+type StubTimeProvider struct {
+	FixedTime time.Time
+}
+
+func (s *StubTimeProvider) Now() time.Time {
+	return s.FixedTime
 }
 
 func TestNewHandler(t *testing.T) {
@@ -130,7 +137,7 @@ func TestNewHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			creator := &FakeEventCreator{err: tt.createErr}
-			timeProvider := &testutil.StubTimeProvider{FixedTime: tt.fixedTime}
+			timeProvider := &StubTimeProvider{FixedTime: tt.fixedTime}
 			uidGen := &StubUIDGenerator{uid: tt.uid, err: tt.uidErr}
 
 			err := NewHandler(creator, timeProvider, uidGen, tt.title, tt.when, tt.duration, tt.location)

@@ -1,7 +1,6 @@
 package util
 
 import (
-	"github.com/NaMinhyeok/calcli/internal/testutil"
 	"testing"
 	"time"
 )
@@ -68,9 +67,18 @@ func TestParseDate(t *testing.T) {
 	}
 }
 
+// StubTimeProvider for testing
+type StubTimeProvider struct {
+	FixedTime time.Time
+}
+
+func (s *StubTimeProvider) Now() time.Time {
+	return s.FixedTime
+}
+
 func TestParseTime(t *testing.T) {
 	fixedTime := time.Date(2025, 8, 29, 10, 30, 0, 0, time.Local)
-	timeProvider := &testutil.StubTimeProvider{FixedTime: fixedTime}
+	timeProvider := &StubTimeProvider{FixedTime: fixedTime}
 
 	tests := []struct {
 		name     string
