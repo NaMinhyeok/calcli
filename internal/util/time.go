@@ -45,3 +45,10 @@ type RealTimeProvider struct{}
 func (t *RealTimeProvider) Now() time.Time {
 	return time.Now()
 }
+
+func ParseDuration(duration string) (time.Duration, error) {
+	if duration == "" {
+		return time.Hour, nil // default 1 hour
+	}
+	return time.ParseDuration(duration)
+}

@@ -8,9 +8,26 @@ import (
 
 	"github.com/NaMinhyeok/calcli/internal/app"
 	"github.com/NaMinhyeok/calcli/internal/config"
+	"github.com/NaMinhyeok/calcli/internal/domain"
 	"github.com/NaMinhyeok/calcli/internal/storage/vdir"
 	"github.com/NaMinhyeok/calcli/internal/util"
 )
+
+func loadConfigAndCalendar() (*config.Config, domain.Calendar) {
+	cfg, err := config.Load(config.GetDefaultConfigPath())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
+		os.Exit(1)
+	}
+
+	calendar, err := cfg.GetDefaultCalendar()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
+		os.Exit(1)
+	}
+
+	return cfg, calendar
+}
 
 func main() {
 	flag.Usage = func() {
@@ -67,19 +84,7 @@ func main() {
 			toTime = &t
 		}
 
-		// Load configuration
-		cfg, err := config.Load(config.GetDefaultConfigPath())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Get default calendar
-		calendar, err := cfg.GetDefaultCalendar()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
-			os.Exit(1)
-		}
+		_, calendar := loadConfigAndCalendar()
 
 		// Use calendar path from config
 		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
@@ -101,18 +106,7 @@ func main() {
 		duration := *durationFlag
 		location := *locationFlag
 
-		// Load config to get calendar path
-		cfg, err := config.Load(config.GetDefaultConfigPath())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
-			os.Exit(1)
-		}
-
-		calendar, err := cfg.GetDefaultCalendar()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
-			os.Exit(1)
-		}
+		_, calendar := loadConfigAndCalendar()
 
 		// Create writer and handle new event
 		writer := vdir.NewWriter(calendar.Path)
@@ -132,17 +126,7 @@ func main() {
 
 		query := flag.Arg(1)
 
-		cfg, err := config.Load(config.GetDefaultConfigPath())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
-			os.Exit(1)
-		}
-
-		calendar, err := cfg.GetDefaultCalendar()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
-			os.Exit(1)
-		}
+		_, calendar := loadConfigAndCalendar()
 
 		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
 		formatter := &app.SimpleEventFormatter{}
@@ -159,17 +143,7 @@ func main() {
 		filePath := flag.Arg(1)
 
 		// Load config
-		cfg, err := config.Load(config.GetDefaultConfigPath())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
-			os.Exit(1)
-		}
-
-		calendar, err := cfg.GetDefaultCalendar()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Calendar error: %v\n", err)
-			os.Exit(1)
-		}
+		_, calendar := loadConfigAndCalendar()
 
 		// Create importer and UID generator
 		writer := vdir.NewWriter(calendar.Path)
@@ -180,11 +154,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "calendars":
-		cfg, err := config.Load(config.GetDefaultConfigPath())
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Config error: %v\n", err)
-			os.Exit(1)
-		}
+		cfg, _ := loadConfigAndCalendar()
 
 		if err := app.CalendarsHandler(cfg, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)

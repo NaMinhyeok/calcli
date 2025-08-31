@@ -3,7 +3,6 @@ package app
 import (
 	"crypto/rand"
 	"fmt"
-	"time"
 
 	"github.com/NaMinhyeok/calcli/internal/domain"
 	"github.com/NaMinhyeok/calcli/internal/util"
@@ -29,7 +28,7 @@ func NewHandler(creator EventCreator, timeProvider util.TimeProvider, uidGen UID
 		return fmt.Errorf("invalid time format: %v", err)
 	}
 
-	dur, err := parseDuration(duration)
+	dur, err := util.ParseDuration(duration)
 	if err != nil {
 		return fmt.Errorf("invalid duration: %v", err)
 	}
@@ -49,13 +48,6 @@ func NewHandler(creator EventCreator, timeProvider util.TimeProvider, uidGen UID
 	}
 
 	return creator.CreateEvent(event)
-}
-
-func parseDuration(duration string) (time.Duration, error) {
-	if duration == "" {
-		return time.Hour, nil // default 1 hour
-	}
-	return time.ParseDuration(duration)
 }
 
 func generateUID() (string, error) {
