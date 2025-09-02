@@ -119,18 +119,37 @@ func main() {
 
 		fmt.Printf("Event '%s' created successfully\n", title)
 	case "search":
-		if flag.NArg() < 2 {
-			fmt.Fprintf(os.Stderr, "Usage: %s search <query>\n", os.Args[0])
+		searchFlags := flag.NewFlagSet("search", flag.ExitOnError)
+		fieldFlag := searchFlags.String("field", "any", "Field to search in (any, title, desc, location)")
+		searchFlags.Parse(flag.Args()[1:])
+
+		if searchFlags.NArg() < 1 {
+			fmt.Fprintf(os.Stderr, "Usage: %s search [--field=any|title|desc|location] <query>\n", os.Args[0])
 			os.Exit(2)
 		}
 
-		query := flag.Arg(1)
+		query := searchFlags.Arg(0)
+
+		var searchField app.SearchField
+		switch *fieldFlag {
+		case "any":
+			searchField = app.SearchFieldAny
+		case "title":
+			searchField = app.SearchFieldTitle
+		case "desc":
+			searchField = app.SearchFieldDesc
+		case "location":
+			searchField = app.SearchFieldLocation
+		default:
+			fmt.Fprintf(os.Stderr, "Invalid field: %s. Valid fields: any, title, desc, location\n", *fieldFlag)
+			os.Exit(2)
+		}
 
 		_, calendar := loadConfigAndCalendar()
 
 		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
 		formatter := &app.SimpleEventFormatter{}
-		if err := app.SearchHandler(reader, formatter, os.Stdout, query, app.SearchFieldAny); err != nil {
+		if err := app.SearchHandler(reader, formatter, os.Stdout, query, searchField); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
