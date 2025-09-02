@@ -36,6 +36,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  list        List events\n")
 		fmt.Fprintf(os.Stderr, "  new         Create new event\n")
 		fmt.Fprintf(os.Stderr, "  search      Search events\n")
+		fmt.Fprintf(os.Stderr, "  edit        Edit existing event\n")
 		fmt.Fprintf(os.Stderr, "  import      Import events from ICS file\n")
 		fmt.Fprintf(os.Stderr, "  calendars   Print available calendars\n")
 		fmt.Fprintf(os.Stderr, "\nGlobal flags:\n")
@@ -64,6 +65,7 @@ func main() {
 		listFlags := flag.NewFlagSet("list", flag.ExitOnError)
 		fromFlag := listFlags.String("from", "", "Start date (YYYY-MM-DD or 'today')")
 		toFlag := listFlags.String("to", "", "End date (YYYY-MM-DD or 'today')")
+		showUIDFlag := listFlags.Bool("show-uid", false, "Show event UIDs")
 		listFlags.Parse(flag.Args()[1:])
 
 		var fromTime, toTime *time.Time
@@ -88,7 +90,7 @@ func main() {
 
 		// Use calendar path from config
 		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
-		formatter := &app.SimpleEventFormatter{}
+		formatter := &app.SimpleEventFormatter{ShowUID: *showUIDFlag}
 		if err := app.ListHandler(reader, formatter, os.Stdout, fromTime, toTime); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -121,6 +123,7 @@ func main() {
 	case "search":
 		searchFlags := flag.NewFlagSet("search", flag.ExitOnError)
 		fieldFlag := searchFlags.String("field", "any", "Field to search in (any, title, desc, location)")
+		showUIDFlag := searchFlags.Bool("show-uid", false, "Show event UIDs")
 		searchFlags.Parse(flag.Args()[1:])
 
 		if searchFlags.NArg() < 1 {
@@ -148,11 +151,55 @@ func main() {
 		_, calendar := loadConfigAndCalendar()
 
 		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
-		formatter := &app.SimpleEventFormatter{}
+		formatter := &app.SimpleEventFormatter{ShowUID: *showUIDFlag}
 		if err := app.SearchHandler(reader, formatter, os.Stdout, query, searchField); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "edit":
+		editFlags := flag.NewFlagSet("edit", flag.ExitOnError)
+		uidFlag := editFlags.String("uid", "", "UID of the event to edit (required)")
+		titleFlag := editFlags.String("title", "", "New event title")
+		whenFlag := editFlags.String("when", "", "New event start time")
+		durationFlag := editFlags.String("duration", "", "New event duration")
+		locationFlag := editFlags.String("location", "", "New event location")
+		editFlags.Parse(flag.Args()[1:])
+
+		if *uidFlag == "" {
+			fmt.Fprintf(os.Stderr, "Usage: %s edit --uid=<uid> [--title=<title>] [--when=<when>] [--duration=<duration>] [--location=<location>]\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "At least one of --title, --when, --duration, or --location must be provided.\n")
+			os.Exit(2)
+		}
+
+		if *titleFlag == "" && *whenFlag == "" && *durationFlag == "" && *locationFlag == "" {
+			fmt.Fprintf(os.Stderr, "At least one edit option must be provided: --title, --when, --duration, or --location\n")
+			os.Exit(2)
+		}
+
+		_, calendar := loadConfigAndCalendar()
+
+		var options app.EditOptions
+		if *titleFlag != "" {
+			options.Title = titleFlag
+		}
+		if *whenFlag != "" {
+			options.When = whenFlag
+		}
+		if *durationFlag != "" {
+			options.Duration = durationFlag
+		}
+		if *locationFlag != "" {
+			options.Location = locationFlag
+		}
+
+		writer := vdir.NewWriter(calendar.Path)
+		timeProvider := &util.RealTimeProvider{}
+		if err := app.EditHandler(writer, timeProvider, *uidFlag, options); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Event '%s' updated successfully\n", *uidFlag)
 	case "import":
 		if flag.NArg() < 2 {
 			fmt.Fprintf(os.Stderr, "Usage: %s import <file.ics>\n", os.Args[0])

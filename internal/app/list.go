@@ -44,15 +44,22 @@ func (h HardcodedEventLister) ListEvents() ([]domain.Event, error) {
 	return events, nil
 }
 
-type SimpleEventFormatter struct{}
+type SimpleEventFormatter struct {
+	ShowUID bool
+}
 
 func (s SimpleEventFormatter) FormatEvents(events []domain.Event, w io.Writer) {
 	for _, event := range events {
-		fmt.Fprintf(w, "%s - %s %s\n",
+		fmt.Fprintf(w, "%s - %s %s",
 			event.Start.Format("15:04"),
 			event.End.Format("15:04"),
 			event.Summary,
 		)
+		if s.ShowUID {
+			fmt.Fprintf(w, " [%s]", event.UID)
+		}
+		fmt.Fprintf(w, "\n")
+
 		if event.Location != "" {
 			fmt.Fprintf(w, "  @ %s\n", event.Location)
 		}
