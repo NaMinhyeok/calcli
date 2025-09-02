@@ -6,6 +6,9 @@ import (
 )
 
 func TestParseDate(t *testing.T) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
 	tests := []struct {
 		name     string
 		input    string
@@ -15,7 +18,47 @@ func TestParseDate(t *testing.T) {
 		{
 			name:     "today",
 			input:    "today",
-			expected: time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Local),
+			expected: today,
+		},
+		{
+			name:     "tomorrow",
+			input:    "tomorrow",
+			expected: today.AddDate(0, 0, 1),
+		},
+		{
+			name:     "yesterday",
+			input:    "yesterday",
+			expected: today.AddDate(0, 0, -1),
+		},
+		{
+			name:     "+3d",
+			input:    "+3d",
+			expected: today.AddDate(0, 0, 3),
+		},
+		{
+			name:     "-2d",
+			input:    "-2d",
+			expected: today.AddDate(0, 0, -2),
+		},
+		{
+			name:     "5d (implicit positive)",
+			input:    "5d",
+			expected: today.AddDate(0, 0, 5),
+		},
+		{
+			name:     "+2w",
+			input:    "+2w",
+			expected: today.AddDate(0, 0, 14),
+		},
+		{
+			name:     "-1w",
+			input:    "-1w",
+			expected: today.AddDate(0, 0, -7),
+		},
+		{
+			name:     "3w",
+			input:    "3w",
+			expected: today.AddDate(0, 0, 21),
 		},
 		{
 			name:     "YYYY-MM-DD format",

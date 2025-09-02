@@ -2,17 +2,71 @@ package util
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 )
 
 func ParseDate(date string) (time.Time, error) {
-	if date == "today" {
-		now := time.Now()
-		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local), nil
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+	switch date {
+	case "today":
+		return today, nil
+	case "tomorrow":
+		return today.AddDate(0, 0, 1), nil
+	case "yesterday":
+		return today.AddDate(0, 0, -1), nil
 	}
 
-	// Try YYYY-MM-DD format
+	if matched, days := parseRelativeDays(date); matched {
+		return today.AddDate(0, 0, days), nil
+	}
+
+	if matched, weeks := parseRelativeWeeks(date); matched {
+		return today.AddDate(0, 0, weeks*7), nil
+	}
+
 	return time.Parse("2006-01-02", date)
+}
+
+func parseRelativeDays(date string) (bool, int) {
+	re := regexp.MustCompile(`^([+-]?)(\d+)d$`)
+	matches := re.FindStringSubmatch(date)
+	if len(matches) != 3 {
+		return false, 0
+	}
+
+	days, err := strconv.Atoi(matches[2])
+	if err != nil {
+		return false, 0
+	}
+
+	if matches[1] == "-" {
+		days = -days
+	}
+
+	return true, days
+}
+
+func parseRelativeWeeks(date string) (bool, int) {
+	re := regexp.MustCompile(`^([+-]?)(\d+)w$`)
+	matches := re.FindStringSubmatch(date)
+	if len(matches) != 3 {
+		return false, 0
+	}
+
+	weeks, err := strconv.Atoi(matches[2])
+	if err != nil {
+		return false, 0
+	}
+
+	if matches[1] == "-" {
+		weeks = -weeks
+	}
+
+	return true, weeks
 }
 
 func ParseTime(when string, timeProvider TimeProvider) (time.Time, error) {
