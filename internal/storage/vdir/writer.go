@@ -29,23 +29,31 @@ func (w *Writer) CreateEvent(event domain.Event) error {
 	filename := filepath.Join(w.basePath, event.UID+".ics")
 	tmpFile, err := os.CreateTemp(w.basePath, "tmp_*.ics")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
-	defer os.Remove(tmpFile.Name())
+
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+	}()
 
 	if err := ical.GenerateEvent(event, tmpFile); err != nil {
-		tmpFile.Close()
-		return err
+		return fmt.Errorf("failed to generate event: %w", err)
 	}
 
 	if err := tmpFile.Sync(); err != nil {
-		tmpFile.Close()
-		return err
+		return fmt.Errorf("failed to sync temporary file: %w", err)
 	}
 
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary file: %w", err)
+	}
 
-	return os.Rename(tmpFile.Name(), filename)
+	if err := os.Rename(tmpFile.Name(), filename); err != nil {
+		return fmt.Errorf("failed to rename temporary file to %s: %w", filename, err)
+	}
+
+	return nil
 }
 
 func (w *Writer) FindEventByUID(uid string) (domain.Event, error) {
@@ -63,13 +71,13 @@ func (w *Writer) FindEventByUID(uid string) (domain.Event, error) {
 
 		file, err := os.Open(path)
 		if err != nil {
-			return nil
+			return fmt.Errorf("failed to open file %s: %w", path, err)
 		}
 		defer file.Close()
 
 		events, err := ical.ParseEvents(file)
 		if err != nil {
-			return nil
+			return fmt.Errorf("failed to parse events from %s: %w", path, err)
 		}
 
 		for _, event := range events {
