@@ -29,6 +29,37 @@ func loadConfigAndCalendar() (*config.Config, domain.Calendar) {
 	return cfg, calendar
 }
 
+// exitf prints to stderr and exits with the given code.
+func exitf(code int, format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, args...)
+	os.Exit(code)
+}
+
+// mustParseDatePtr parses a date string or returns nil when empty. Exits on error.
+func mustParseDatePtr(v string, name string) *time.Time {
+	if v == "" {
+		return nil
+	}
+	t, err := util.ParseDate(v)
+	if err != nil {
+		exitf(2, "Invalid %s date: %v\n", name, err)
+	}
+	return &t
+}
+
+// helpers to construct storage/format components
+func readerFor(calendar domain.Calendar) *vdir.Reader {
+	return vdir.NewReader(os.DirFS(calendar.Path), ".")
+}
+
+func writerFor(calendar domain.Calendar) *vdir.Writer {
+	return vdir.NewWriter(calendar.Path)
+}
+
+func formatter(showUID bool) *app.SimpleEventFormatter {
+	return &app.SimpleEventFormatter{ShowUID: showUID}
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <command> [args]\n", os.Args[0])
@@ -68,32 +99,16 @@ func main() {
 		showUIDFlag := listFlags.Bool("show-uid", false, "Show event UIDs")
 		listFlags.Parse(flag.Args()[1:])
 
-		var fromTime, toTime *time.Time
-		if *fromFlag != "" {
-			t, err := util.ParseDate(*fromFlag)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Invalid from date: %v\n", err)
-				os.Exit(2)
-			}
-			fromTime = &t
-		}
-		if *toFlag != "" {
-			t, err := util.ParseDate(*toFlag)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Invalid to date: %v\n", err)
-				os.Exit(2)
-			}
-			toTime = &t
-		}
+		fromTime := mustParseDatePtr(*fromFlag, "from")
+		toTime := mustParseDatePtr(*toFlag, "to")
 
 		_, calendar := loadConfigAndCalendar()
 
 		// Use calendar path from config
-		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
-		formatter := &app.SimpleEventFormatter{ShowUID: *showUIDFlag}
-		if err := app.ListHandler(reader, formatter, os.Stdout, fromTime, toTime); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+		reader := readerFor(calendar)
+		fmtter := formatter(*showUIDFlag)
+		if err := app.ListHandler(reader, fmtter, os.Stdout, fromTime, toTime); err != nil {
+			exitf(1, "Error: %v\n", err)
 		}
 	case "new":
 		newFlags := flag.NewFlagSet("new", flag.ExitOnError)
@@ -111,12 +126,11 @@ func main() {
 		_, calendar := loadConfigAndCalendar()
 
 		// Create writer and handle new event
-		writer := vdir.NewWriter(calendar.Path)
+		writer := writerFor(calendar)
 		timeProvider := &util.RealTimeProvider{}
 		uidGen := &app.RealUIDGenerator{}
 		if err := app.NewHandler(writer, timeProvider, uidGen, title, when, duration, location); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitf(1, "Error: %v\n", err)
 		}
 
 		fmt.Printf("Event '%s' created successfully\n", title)
@@ -127,8 +141,7 @@ func main() {
 		searchFlags.Parse(flag.Args()[1:])
 
 		if searchFlags.NArg() < 1 {
-			fmt.Fprintf(os.Stderr, "Usage: %s search [--field=any|title|desc|location] <query>\n", os.Args[0])
-			os.Exit(2)
+			exitf(2, "Usage: %s search [--field=any|title|desc|location] <query>\n", os.Args[0])
 		}
 
 		query := searchFlags.Arg(0)
@@ -144,17 +157,15 @@ func main() {
 		case "location":
 			searchField = app.SearchFieldLocation
 		default:
-			fmt.Fprintf(os.Stderr, "Invalid field: %s. Valid fields: any, title, desc, location\n", *fieldFlag)
-			os.Exit(2)
+			exitf(2, "Invalid field: %s. Valid fields: any, title, desc, location\n", *fieldFlag)
 		}
 
 		_, calendar := loadConfigAndCalendar()
 
-		reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
-		formatter := &app.SimpleEventFormatter{ShowUID: *showUIDFlag}
-		if err := app.SearchHandler(reader, formatter, os.Stdout, query, searchField); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+		reader := readerFor(calendar)
+		fmtter := formatter(*showUIDFlag)
+		if err := app.SearchHandler(reader, fmtter, os.Stdout, query, searchField); err != nil {
+			exitf(1, "Error: %v\n", err)
 		}
 	case "edit":
 		editFlags := flag.NewFlagSet("edit", flag.ExitOnError)
@@ -167,13 +178,11 @@ func main() {
 
 		if *uidFlag == "" {
 			fmt.Fprintf(os.Stderr, "Usage: %s edit --uid=<uid> [--title=<title>] [--when=<when>] [--duration=<duration>] [--location=<location>]\n", os.Args[0])
-			fmt.Fprintf(os.Stderr, "At least one of --title, --when, --duration, or --location must be provided.\n")
-			os.Exit(2)
+			exitf(2, "At least one of --title, --when, --duration, or --location must be provided.\n")
 		}
 
 		if *titleFlag == "" && *whenFlag == "" && *durationFlag == "" && *locationFlag == "" {
-			fmt.Fprintf(os.Stderr, "At least one edit option must be provided: --title, --when, --duration, or --location\n")
-			os.Exit(2)
+			exitf(2, "At least one edit option must be provided: --title, --when, --duration, or --location\n")
 		}
 
 		_, calendar := loadConfigAndCalendar()
@@ -192,18 +201,16 @@ func main() {
 			options.Location = locationFlag
 		}
 
-		writer := vdir.NewWriter(calendar.Path)
+		writer := writerFor(calendar)
 		timeProvider := &util.RealTimeProvider{}
 		if err := app.EditHandler(writer, timeProvider, *uidFlag, options); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitf(1, "Error: %v\n", err)
 		}
 
 		fmt.Printf("Event '%s' updated successfully\n", *uidFlag)
 	case "import":
 		if flag.NArg() < 2 {
-			fmt.Fprintf(os.Stderr, "Usage: %s import <file.ics>\n", os.Args[0])
-			os.Exit(2)
+			exitf(2, "Usage: %s import <file.ics>\n", os.Args[0])
 		}
 
 		filePath := flag.Arg(1)
@@ -212,19 +219,17 @@ func main() {
 		_, calendar := loadConfigAndCalendar()
 
 		// Create importer and UID generator
-		writer := vdir.NewWriter(calendar.Path)
+		writer := writerFor(calendar)
 		uidGen := &app.RealUIDGenerator{}
 
 		if err := app.ImportHandler(writer, uidGen, filePath, false); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitf(1, "Error: %v\n", err)
 		}
 	case "calendars":
 		cfg, _ := loadConfigAndCalendar()
 
 		if err := app.CalendarsHandler(cfg, os.Stdout); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			exitf(1, "Error: %v\n", err)
 		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)

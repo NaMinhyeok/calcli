@@ -42,7 +42,18 @@ func Load(configPath string) (*Config, error) {
 }
 
 func GetDefaultConfigPath() string {
-	home := os.Getenv("HOME")
+	if v := os.Getenv("CALCLI_CONFIG"); v != "" {
+		// Allow tests or users to override the config path via environment.
+		if len(v) >= 1 && v[0] == '~' {
+			return expandPath(v)
+		}
+		return v
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		// Fallback to HOME if UserHomeDir fails
+		home = os.Getenv("HOME")
+	}
 	return filepath.Join(home, ".calcli", "config.json")
 }
 
