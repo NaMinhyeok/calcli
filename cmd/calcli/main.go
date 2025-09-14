@@ -116,12 +116,18 @@ func main() {
 		whenFlag := newFlags.String("when", time.Now().Format("15:04"), "Event start time")
 		durationFlag := newFlags.String("duration", "1h", "Event duration")
 		locationFlag := newFlags.String("location", "", "Event location")
+		repeatFlag := newFlags.String("repeat", "", "Repeat pattern (daily|weekly)")
+		countFlag := newFlags.Int("count", 0, "Number of repetitions")
+		untilFlag := newFlags.String("until", "", "End date for repetition")
 		newFlags.Parse(flag.Args()[1:])
 
 		title := *titleFlag
 		when := *whenFlag
 		duration := *durationFlag
 		location := *locationFlag
+		repeat := *repeatFlag
+		count := *countFlag
+		until := *untilFlag
 
 		_, calendar := loadConfigAndCalendar()
 
@@ -129,7 +135,7 @@ func main() {
 		writer := writerFor(calendar)
 		timeProvider := &util.RealTimeProvider{}
 		uidGen := &app.RealUIDGenerator{}
-		if err := app.NewHandler(writer, timeProvider, uidGen, title, when, duration, location); err != nil {
+		if err := app.NewHandlerWithRecurrence(writer, timeProvider, uidGen, title, when, duration, location, repeat, count, until); err != nil {
 			exitf(1, "Error: %v\n", err)
 		}
 

@@ -183,3 +183,187 @@ func TestNewHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestNewHandlerWithRecurrence(t *testing.T) {
+	tests := []struct {
+		name               string
+		title              string
+		when               string
+		duration           string
+		location           string
+		repeat             string
+		count              int
+		until              string
+		fixedTime          time.Time
+		uid                string
+		expectErr          bool
+		expectedRecurrence *domain.Recurrence
+	}{
+		{
+			name:      "daily recurrence with count",
+			title:     "Daily Standup",
+			when:      "2025-09-01 09:00",
+			duration:  "30m",
+			location:  "Office",
+			repeat:    "daily",
+			count:     5,
+			until:     "",
+			fixedTime: time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:       "daily-uid",
+			expectedRecurrence: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  1,
+				Count:     intPtr(5),
+				Until:     nil,
+			},
+		},
+		{
+			name:      "weekly recurrence with until",
+			title:     "Team Meeting",
+			when:      "2025-09-01 14:00",
+			duration:  "1h",
+			location:  "Conference Room",
+			repeat:    "weekly",
+			count:     0,
+			until:     "2025-12-31",
+			fixedTime: time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:       "weekly-uid",
+			expectedRecurrence: &domain.Recurrence{
+				Frequency: "WEEKLY",
+				Interval:  1,
+				Count:     nil,
+				Until:     timePtr(time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)),
+			},
+		},
+		{
+			name:      "monthly recurrence",
+			title:     "Monthly Review",
+			when:      "2025-09-01 16:00",
+			duration:  "2h",
+			location:  "Boardroom",
+			repeat:    "monthly",
+			count:     12,
+			until:     "",
+			fixedTime: time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:       "monthly-uid",
+			expectedRecurrence: &domain.Recurrence{
+				Frequency: "MONTHLY",
+				Interval:  1,
+				Count:     intPtr(12),
+				Until:     nil,
+			},
+		},
+		{
+			name:               "no recurrence",
+			title:              "One-time Meeting",
+			when:               "2025-09-01 10:00",
+			duration:           "1h",
+			location:           "Room A",
+			repeat:             "",
+			count:              0,
+			until:              "",
+			fixedTime:          time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:                "one-time-uid",
+			expectedRecurrence: nil,
+		},
+		{
+			name:      "invalid repeat pattern",
+			title:     "Bad Repeat",
+			when:      "2025-09-01 10:00",
+			duration:  "1h",
+			location:  "",
+			repeat:    "invalid",
+			count:     5,
+			until:     "",
+			fixedTime: time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:       "bad-uid",
+			expectErr: true,
+		},
+		{
+			name:      "both count and until specified",
+			title:     "Conflict Test",
+			when:      "2025-09-01 10:00",
+			duration:  "1h",
+			location:  "",
+			repeat:    "daily",
+			count:     5,
+			until:     "2025-12-31",
+			fixedTime: time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:       "conflict-uid",
+			expectErr: true,
+		},
+		{
+			name:      "invalid until date",
+			title:     "Bad Until",
+			when:      "2025-09-01 10:00",
+			duration:  "1h",
+			location:  "",
+			repeat:    "daily",
+			count:     0,
+			until:     "invalid-date",
+			fixedTime: time.Date(2025, 8, 31, 10, 0, 0, 0, time.UTC),
+			uid:       "bad-until-uid",
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			creator := &FakeEventCreator{}
+			timeProvider := &StubTimeProvider{FixedTime: tt.fixedTime}
+			uidGen := &StubUIDGenerator{uid: tt.uid}
+
+			err := NewHandlerWithRecurrence(creator, timeProvider, uidGen, tt.title, tt.when, tt.duration, tt.location, tt.repeat, tt.count, tt.until)
+
+			if tt.expectErr {
+				if err == nil {
+					t.Error("expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("expected no error but got: %v", err)
+				return
+			}
+
+			if len(creator.events) != 1 {
+				t.Errorf("expected 1 event created, got %d", len(creator.events))
+				return
+			}
+
+			event := creator.events[0]
+
+			if event.Summary != tt.title {
+				t.Errorf("expected summary %q, got %q", tt.title, event.Summary)
+			}
+
+			if (event.Recurrence == nil) != (tt.expectedRecurrence == nil) {
+				t.Errorf("recurrence presence mismatch: expected %v, got %v", tt.expectedRecurrence != nil, event.Recurrence != nil)
+				return
+			}
+
+			if event.Recurrence != nil && tt.expectedRecurrence != nil {
+				if event.Recurrence.Frequency != tt.expectedRecurrence.Frequency {
+					t.Errorf("expected frequency %s, got %s", tt.expectedRecurrence.Frequency, event.Recurrence.Frequency)
+				}
+
+				if event.Recurrence.Interval != tt.expectedRecurrence.Interval {
+					t.Errorf("expected interval %d, got %d", tt.expectedRecurrence.Interval, event.Recurrence.Interval)
+				}
+
+				if (event.Recurrence.Count == nil) != (tt.expectedRecurrence.Count == nil) {
+					t.Errorf("count pointer mismatch: expected %v, got %v", tt.expectedRecurrence.Count, event.Recurrence.Count)
+				} else if event.Recurrence.Count != nil && *event.Recurrence.Count != *tt.expectedRecurrence.Count {
+					t.Errorf("expected count %d, got %d", *tt.expectedRecurrence.Count, *event.Recurrence.Count)
+				}
+
+				if (event.Recurrence.Until == nil) != (tt.expectedRecurrence.Until == nil) {
+					t.Errorf("until pointer mismatch: expected %v, got %v", tt.expectedRecurrence.Until, event.Recurrence.Until)
+				} else if event.Recurrence.Until != nil && !event.Recurrence.Until.Equal(*tt.expectedRecurrence.Until) {
+					t.Errorf("expected until %v, got %v", *tt.expectedRecurrence.Until, *event.Recurrence.Until)
+				}
+			}
+		})
+	}
+}
