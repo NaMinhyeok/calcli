@@ -14,6 +14,14 @@ type Event struct {
 	Categories  []string
 	AllDay      bool
 	Calendar    string
+	Recurrence  *Recurrence
+}
+
+type Recurrence struct {
+	Frequency string
+	Interval  int
+	Count     *int
+	Until     *time.Time
 }
 
 func (e Event) Duration() time.Duration {

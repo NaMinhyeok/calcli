@@ -3,6 +3,7 @@ package ical
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/NaMinhyeok/calcli/internal/domain"
 )
@@ -109,4 +110,104 @@ END:VCALENDAR`,
 			}
 		})
 	}
+}
+
+func TestParseRRULE(t *testing.T) {
+	tests := []struct {
+		name     string
+		rrule    string
+		expected *domain.Recurrence
+	}{
+		{
+			name:  "daily recurrence with count",
+			rrule: "FREQ=DAILY;COUNT=10",
+			expected: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  1,
+				Count:     intPtr(10),
+				Until:     nil,
+			},
+		},
+		{
+			name:  "weekly recurrence with interval",
+			rrule: "FREQ=WEEKLY;INTERVAL=2",
+			expected: &domain.Recurrence{
+				Frequency: "WEEKLY",
+				Interval:  2,
+				Count:     nil,
+				Until:     nil,
+			},
+		},
+		{
+			name:  "monthly recurrence with until",
+			rrule: "FREQ=MONTHLY;UNTIL=20251231T235959Z",
+			expected: &domain.Recurrence{
+				Frequency: "MONTHLY",
+				Interval:  1,
+				Count:     nil,
+				Until:     timePtr(time.Date(2025, 12, 31, 23, 59, 59, 0, time.UTC)),
+			},
+		},
+		{
+			name:  "complex recurrence",
+			rrule: "FREQ=DAILY;INTERVAL=3;COUNT=5",
+			expected: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  3,
+				Count:     intPtr(5),
+				Until:     nil,
+			},
+		},
+		{
+			name:     "empty rrule",
+			rrule:    "",
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseRRULE(tt.rrule)
+
+			if tt.expected == nil {
+				if result != nil {
+					t.Errorf("expected nil, got %+v", result)
+				}
+				return
+			}
+
+			if result == nil {
+				t.Error("expected recurrence, got nil")
+				return
+			}
+
+			if result.Frequency != tt.expected.Frequency {
+				t.Errorf("expected Frequency %s, got %s", tt.expected.Frequency, result.Frequency)
+			}
+
+			if result.Interval != tt.expected.Interval {
+				t.Errorf("expected Interval %d, got %d", tt.expected.Interval, result.Interval)
+			}
+
+			if (result.Count == nil) != (tt.expected.Count == nil) {
+				t.Errorf("Count pointer mismatch: expected %v, got %v", tt.expected.Count, result.Count)
+			} else if result.Count != nil && *result.Count != *tt.expected.Count {
+				t.Errorf("expected Count %d, got %d", *tt.expected.Count, *result.Count)
+			}
+
+			if (result.Until == nil) != (tt.expected.Until == nil) {
+				t.Errorf("Until pointer mismatch: expected %v, got %v", tt.expected.Until, result.Until)
+			} else if result.Until != nil && !result.Until.Equal(*tt.expected.Until) {
+				t.Errorf("expected Until %v, got %v", *tt.expected.Until, *result.Until)
+			}
+		})
+	}
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
 }

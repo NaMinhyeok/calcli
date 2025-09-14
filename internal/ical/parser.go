@@ -2,6 +2,9 @@ package ical
 
 import (
 	"io"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/NaMinhyeok/calcli/internal/domain"
 
@@ -54,5 +57,47 @@ func convertToDomainEvent(event *ics.VEvent) domain.Event {
 		domainEvent.AllDay = startTime.Hour() == 0 && startTime.Minute() == 0 && startTime.Second() == 0
 	}
 
+	if rrule := event.GetProperty(ics.ComponentProperty(ics.PropertyRrule)); rrule != nil {
+		domainEvent.Recurrence = parseRRULE(rrule.Value)
+	}
+
 	return domainEvent
+}
+
+func parseRRULE(rruleStr string) *domain.Recurrence {
+	if rruleStr == "" {
+		return nil
+	}
+
+	parts := strings.Split(rruleStr, ";")
+	recurrence := &domain.Recurrence{
+		Interval: 1,
+	}
+
+	for _, part := range parts {
+		keyValue := strings.SplitN(part, "=", 2)
+		if len(keyValue) != 2 {
+			continue
+		}
+		key, value := keyValue[0], keyValue[1]
+
+		switch key {
+		case "FREQ":
+			recurrence.Frequency = value
+		case "INTERVAL":
+			if interval, err := strconv.Atoi(value); err == nil {
+				recurrence.Interval = interval
+			}
+		case "COUNT":
+			if count, err := strconv.Atoi(value); err == nil {
+				recurrence.Count = &count
+			}
+		case "UNTIL":
+			if until, err := time.Parse("20060102T150405Z", value); err == nil {
+				recurrence.Until = &until
+			}
+		}
+	}
+
+	return recurrence
 }
