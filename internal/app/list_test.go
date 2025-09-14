@@ -210,3 +210,149 @@ func TestListHandlerWithDateRange(t *testing.T) {
 func timePtr(t time.Time) *time.Time {
 	return &t
 }
+
+func TestExpandRecurringEvent(t *testing.T) {
+	baseEvent := domain.Event{
+		UID:     "recurring-1",
+		Summary: "Daily Standup",
+		Start:   time.Date(2025, 9, 1, 9, 0, 0, 0, time.Local),
+		End:     time.Date(2025, 9, 1, 9, 30, 0, 0, time.Local),
+	}
+
+	tests := []struct {
+		name           string
+		recurrence     *domain.Recurrence
+		from           *time.Time
+		to             *time.Time
+		expectedCount  int
+		checkFirstLast func(t *testing.T, events []domain.Event)
+	}{
+		{
+			name: "daily recurrence with count",
+			recurrence: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  1,
+				Count:     intPtr(3),
+			},
+			from:          nil,
+			to:            nil,
+			expectedCount: 3,
+			checkFirstLast: func(t *testing.T, events []domain.Event) {
+				if events[0].Start.Day() != 1 {
+					t.Errorf("first event should be on day 1, got %d", events[0].Start.Day())
+				}
+				if events[2].Start.Day() != 3 {
+					t.Errorf("third event should be on day 3, got %d", events[2].Start.Day())
+				}
+			},
+		},
+		{
+			name: "weekly recurrence with interval 2",
+			recurrence: &domain.Recurrence{
+				Frequency: "WEEKLY",
+				Interval:  2,
+				Count:     intPtr(3),
+			},
+			from:          nil,
+			to:            nil,
+			expectedCount: 3,
+			checkFirstLast: func(t *testing.T, events []domain.Event) {
+				if events[0].Start.Day() != 1 {
+					t.Errorf("first event should be on day 1, got %d", events[0].Start.Day())
+				}
+				if events[1].Start.Day() != 15 {
+					t.Errorf("second event should be on day 15, got %d", events[1].Start.Day())
+				}
+				if events[2].Start.Day() != 29 {
+					t.Errorf("third event should be on day 29, got %d", events[2].Start.Day())
+				}
+			},
+		},
+		{
+			name: "daily recurrence with until date",
+			recurrence: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  1,
+				Until:     timePtr(time.Date(2025, 9, 3, 23, 59, 59, 0, time.Local)),
+			},
+			from:          nil,
+			to:            nil,
+			expectedCount: 3,
+			checkFirstLast: func(t *testing.T, events []domain.Event) {
+				if events[0].Start.Day() != 1 {
+					t.Errorf("first event should be on day 1, got %d", events[0].Start.Day())
+				}
+				if events[2].Start.Day() != 3 {
+					t.Errorf("last event should be on day 3, got %d", events[2].Start.Day())
+				}
+			},
+		},
+		{
+			name: "daily recurrence with date range filter",
+			recurrence: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  1,
+				Count:     intPtr(10),
+			},
+			from:          timePtr(time.Date(2025, 9, 3, 0, 0, 0, 0, time.Local)),
+			to:            timePtr(time.Date(2025, 9, 5, 23, 59, 59, 0, time.Local)),
+			expectedCount: 3,
+			checkFirstLast: func(t *testing.T, events []domain.Event) {
+				if events[0].Start.Day() != 3 {
+					t.Errorf("first event should be on day 3, got %d", events[0].Start.Day())
+				}
+				if events[2].Start.Day() != 5 {
+					t.Errorf("last event should be on day 5, got %d", events[2].Start.Day())
+				}
+			},
+		},
+		{
+			name:          "non-recurring event",
+			recurrence:    nil,
+			from:          nil,
+			to:            nil,
+			expectedCount: 1,
+			checkFirstLast: func(t *testing.T, events []domain.Event) {
+				if events[0].Start.Day() != 1 {
+					t.Errorf("event should be on day 1, got %d", events[0].Start.Day())
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event := baseEvent
+			event.Recurrence = tt.recurrence
+
+			expandedEvents := expandRecurringEvent(event, tt.from, tt.to)
+
+			if len(expandedEvents) != tt.expectedCount {
+				t.Errorf("expected %d events, got %d", tt.expectedCount, len(expandedEvents))
+				return
+			}
+
+			for _, expandedEvent := range expandedEvents {
+				if expandedEvent.Recurrence != nil {
+					t.Error("expanded events should not have recurrence")
+				}
+				if expandedEvent.Summary != baseEvent.Summary {
+					t.Errorf("expanded event should preserve summary, got %s", expandedEvent.Summary)
+				}
+				duration := expandedEvent.End.Sub(expandedEvent.Start)
+				expectedDuration := baseEvent.End.Sub(baseEvent.Start)
+				if duration != expectedDuration {
+					t.Errorf("expanded event should preserve duration, got %v", duration)
+				}
+			}
+
+			if tt.checkFirstLast != nil {
+				tt.checkFirstLast(t, expandedEvents)
+			}
+		})
+	}
+}
+
+func intPtr(i int) *int {
+	return &i
+}

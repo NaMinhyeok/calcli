@@ -74,8 +74,17 @@ func ListHandler(lister EventLister, formatter EventFormatter, w io.Writer, from
 
 	var filteredEvents []domain.Event
 	for _, event := range events {
-		if shouldIncludeEvent(event, from, to) {
-			filteredEvents = append(filteredEvents, event)
+		if event.Recurrence != nil {
+			expandedEvents := expandRecurringEvent(event, from, to)
+			for _, expandedEvent := range expandedEvents {
+				if shouldIncludeEvent(expandedEvent, from, to) {
+					filteredEvents = append(filteredEvents, expandedEvent)
+				}
+			}
+		} else {
+			if shouldIncludeEvent(event, from, to) {
+				filteredEvents = append(filteredEvents, event)
+			}
 		}
 	}
 
@@ -100,4 +109,58 @@ func shouldIncludeEvent(event domain.Event, from, to *time.Time) bool {
 	}
 
 	return true
+}
+
+func expandRecurringEvent(event domain.Event, from, to *time.Time) []domain.Event {
+	if event.Recurrence == nil {
+		return []domain.Event{event}
+	}
+
+	var expandedEvents []domain.Event
+	current := event.Start
+	duration := event.End.Sub(event.Start)
+	count := 0
+
+	for {
+		if event.Recurrence.Count != nil && count >= *event.Recurrence.Count {
+			break
+		}
+
+		if event.Recurrence.Until != nil && current.After(*event.Recurrence.Until) {
+			break
+		}
+
+		if to != nil && current.After(*to) {
+			break
+		}
+
+		if from == nil || !current.Add(duration).Before(*from) {
+			expandedEvent := event
+			expandedEvent.Start = current
+			expandedEvent.End = current.Add(duration)
+			expandedEvent.Recurrence = nil
+			expandedEvents = append(expandedEvents, expandedEvent)
+		}
+
+		switch event.Recurrence.Frequency {
+		case "DAILY":
+			current = current.AddDate(0, 0, event.Recurrence.Interval)
+		case "WEEKLY":
+			current = current.AddDate(0, 0, 7*event.Recurrence.Interval)
+		case "MONTHLY":
+			current = current.AddDate(0, event.Recurrence.Interval, 0)
+		case "YEARLY":
+			current = current.AddDate(event.Recurrence.Interval, 0, 0)
+		default:
+			break
+		}
+
+		count++
+
+		if count > 1000 {
+			break
+		}
+	}
+
+	return expandedEvents
 }
