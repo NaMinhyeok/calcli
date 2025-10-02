@@ -325,7 +325,17 @@ func TestExpandRecurringEvent(t *testing.T) {
 			event := baseEvent
 			event.Recurrence = tt.recurrence
 
-			expandedEvents := expandRecurringEvent(event, tt.from, tt.to)
+			rangeStart := time.Time{}
+			rangeEnd := time.Now().AddDate(10, 0, 0)
+
+			if tt.from != nil {
+				rangeStart = *tt.from
+			}
+			if tt.to != nil {
+				rangeEnd = *tt.to
+			}
+
+			expandedEvents := domain.ExpandRecurrence(event, rangeStart, rangeEnd)
 
 			if len(expandedEvents) != tt.expectedCount {
 				t.Errorf("expected %d events, got %d", tt.expectedCount, len(expandedEvents))
