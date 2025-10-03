@@ -167,3 +167,119 @@ func TestMatchesEvent(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchHandler_WithRecurringEvents(t *testing.T) {
+	now := time.Now()
+	futureDate := now.AddDate(0, 1, 0) // 1 month from now
+
+	count := 5
+	events := []domain.Event{
+		{
+			UID:     "regular-event",
+			Summary: "Regular Meeting",
+			Start:   futureDate,
+			End:     futureDate.Add(1 * time.Hour),
+		},
+		{
+			UID:     "recurring-event",
+			Summary: "Daily Standup",
+			Start:   futureDate,
+			End:     futureDate.Add(30 * time.Minute),
+			Recurrence: &domain.Recurrence{
+				Frequency: "DAILY",
+				Interval:  1,
+				Count:     &count,
+			},
+		},
+	}
+
+	tests := []struct {
+		name          string
+		query         string
+		field         SearchField
+		minExpected   int // Minimum number of matches expected
+		shouldContain string
+	}{
+		{
+			name:          "search recurring event title",
+			query:         "standup",
+			field:         SearchFieldTitle,
+			minExpected:   5, // Should find all 5 instances
+			shouldContain: "Daily Standup",
+		},
+		{
+			name:          "search regular event title",
+			query:         "regular",
+			field:         SearchFieldTitle,
+			minExpected:   1, // Only one instance
+			shouldContain: "Regular Meeting",
+		},
+		{
+			name:          "search any field",
+			query:         "meeting",
+			field:         SearchFieldAny,
+			minExpected:   1,
+			shouldContain: "Regular Meeting",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			searcher := &FakeEventSearcher{events: events}
+			formatter := &SimpleEventFormatter{}
+			var buf bytes.Buffer
+
+			err := SearchHandler(searcher, formatter, &buf, tt.query, tt.field)
+			if err != nil {
+				t.Errorf("expected no error, got %v", err)
+				return
+			}
+
+			output := buf.String()
+
+			// Count occurrences
+			count := strings.Count(output, tt.shouldContain)
+			if count < tt.minExpected {
+				t.Errorf("expected at least %d occurrences of %q, got %d. Output:\n%s",
+					tt.minExpected, tt.shouldContain, count, output)
+			}
+		})
+	}
+}
+
+func TestSearchHandler_RecurringEventsExpansion(t *testing.T) {
+	now := time.Now()
+	futureStart := now.AddDate(0, 0, 7) // 1 week from now
+
+	count := 10
+	event := domain.Event{
+		UID:     "recurring-weekly",
+		Summary: "Weekly Team Sync",
+		Start:   futureStart,
+		End:     futureStart.Add(1 * time.Hour),
+		Recurrence: &domain.Recurrence{
+			Frequency: "WEEKLY",
+			Interval:  1,
+			Count:     &count,
+		},
+	}
+
+	searcher := &FakeEventSearcher{events: []domain.Event{event}}
+	formatter := &SimpleEventFormatter{}
+	var buf bytes.Buffer
+
+	err := SearchHandler(searcher, formatter, &buf, "sync", SearchFieldTitle)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+		return
+	}
+
+	output := buf.String()
+	occurrences := strings.Count(output, "Weekly Team Sync")
+
+	// Should find all 10 weekly instances
+	if occurrences != 10 {
+		t.Errorf("expected 10 occurrences of recurring event, got %d. Output:\n%s",
+			occurrences, output)
+	}
+}

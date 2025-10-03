@@ -3,6 +3,7 @@ package app
 import (
 	"io"
 	"strings"
+	"time"
 
 	"github.com/NaMinhyeok/calcli/internal/domain"
 )
@@ -26,8 +27,22 @@ func SearchHandler(searcher EventSearcher, formatter EventFormatter, output io.W
 		return err
 	}
 
-	var matches []domain.Event
+	// Expand recurring events for a reasonable search range (1 year from now)
+	rangeStart := time.Now().AddDate(0, 0, -30) // 30 days in the past
+	rangeEnd := time.Now().AddDate(1, 0, 0)     // 1 year in the future
+
+	var expandedEvents []domain.Event
 	for _, event := range events {
+		if event.Recurrence != nil {
+			instances := domain.ExpandRecurrence(event, rangeStart, rangeEnd)
+			expandedEvents = append(expandedEvents, instances...)
+		} else {
+			expandedEvents = append(expandedEvents, event)
+		}
+	}
+
+	var matches []domain.Event
+	for _, event := range expandedEvents {
 		if matchesEvent(event, query, field) {
 			matches = append(matches, event)
 		}
