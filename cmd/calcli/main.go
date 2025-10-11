@@ -9,9 +9,13 @@ import (
 	"github.com/NaMinhyeok/calcli/internal/app"
 	"github.com/NaMinhyeok/calcli/internal/config"
 	"github.com/NaMinhyeok/calcli/internal/domain"
+	"github.com/NaMinhyeok/calcli/internal/storage/cache"
 	"github.com/NaMinhyeok/calcli/internal/storage/vdir"
 	"github.com/NaMinhyeok/calcli/internal/util"
 )
+
+// Global cache instance (shared across all commands in the session)
+var globalCache *cache.EventCache
 
 func loadConfigAndCalendar() (*config.Config, domain.Calendar) {
 	cfg, err := config.Load(config.GetDefaultConfigPath())
@@ -49,7 +53,11 @@ func mustParseDatePtr(v string, name string) *time.Time {
 
 // helpers to construct storage/format components
 func readerFor(calendar domain.Calendar) *vdir.Reader {
-	return vdir.NewReader(os.DirFS(calendar.Path), ".")
+	reader := vdir.NewReader(os.DirFS(calendar.Path), ".")
+	if globalCache != nil {
+		reader = reader.WithCache(globalCache)
+	}
+	return reader
 }
 
 func writerFor(calendar domain.Calendar) *vdir.Writer {
@@ -70,6 +78,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  edit        Edit existing event\n")
 		fmt.Fprintf(os.Stderr, "  import      Import events from ICS file\n")
 		fmt.Fprintf(os.Stderr, "  calendars   Print available calendars\n")
+		fmt.Fprintf(os.Stderr, "  reindex     Clear cache and force reload\n")
 		fmt.Fprintf(os.Stderr, "\nGlobal flags:\n")
 		flag.PrintDefaults()
 	}
@@ -87,6 +96,12 @@ func main() {
 	if *help || flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(0)
+	}
+
+	// Initialize global cache based on config
+	cfg, _ := loadConfigAndCalendar()
+	if cfg.Cache.Enabled {
+		globalCache = cache.NewEventCache(cfg.Cache.MaxSize, true)
 	}
 
 	command := flag.Arg(0)
@@ -235,6 +250,10 @@ func main() {
 		cfg, _ := loadConfigAndCalendar()
 
 		if err := app.CalendarsHandler(cfg, os.Stdout); err != nil {
+			exitf(1, "Error: %v\n", err)
+		}
+	case "reindex":
+		if err := app.ReindexHandler(globalCache, os.Stdout); err != nil {
 			exitf(1, "Error: %v\n", err)
 		}
 	default:
