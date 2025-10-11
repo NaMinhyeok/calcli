@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Calendars map[string]CalendarConfig `json:"calendars"`
 	Defaults  DefaultsConfig            `json:"defaults"`
+	Cache     CacheConfig               `json:"cache"`
 }
 
 type CalendarConfig struct {
@@ -21,6 +22,11 @@ type CalendarConfig struct {
 
 type DefaultsConfig struct {
 	DefaultCalendar string `json:"defaultCalendar"`
+}
+
+type CacheConfig struct {
+	Enabled bool `json:"enabled"`
+	MaxSize int  `json:"maxSize"`
 }
 
 func Load(configPath string) (*Config, error) {
@@ -94,6 +100,10 @@ func defaultConfig() *Config {
 		},
 		Defaults: DefaultsConfig{
 			DefaultCalendar: "home",
+		},
+		Cache: CacheConfig{
+			Enabled: true,
+			MaxSize: 1000,
 		},
 	}
 }
