@@ -1,22 +1,29 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 )
 
+// DefaultMaxExpansions is the default maximum number of recurrence instances to expand
+const DefaultMaxExpansions = 5000
+
 // ExpandRecurrence generates instances of a recurring event within a time range
 func ExpandRecurrence(event Event, rangeStart, rangeEnd time.Time) []Event {
+	return ExpandRecurrenceWithLimit(event, rangeStart, rangeEnd, DefaultMaxExpansions)
+}
+
+// ExpandRecurrenceWithLimit generates instances with a custom expansion limit
+func ExpandRecurrenceWithLimit(event Event, rangeStart, rangeEnd time.Time, maxExpansions int) []Event {
 	if event.Recurrence == nil {
 		return []Event{event}
 	}
 
 	var instances []Event
 	current := event.Start
+	hitLimit := false
 
-	// Maximum iterations to prevent infinite loops
-	const maxIterations = 5000
-
-	for i := 0; i < maxIterations; i++ {
+	for i := 0; i < maxExpansions; i++ {
 		// Check if we've passed the range end
 		if current.After(rangeEnd) {
 			break
@@ -43,6 +50,22 @@ func ExpandRecurrence(event Event, rangeStart, rangeEnd time.Time) []Event {
 
 		// Move to next occurrence
 		current = nextOccurrence(current, event.Recurrence)
+
+		// Check if we hit the limit
+		if i == maxExpansions-1 && !current.After(rangeEnd) {
+			hitLimit = true
+		}
+	}
+
+	// Add warning if limit was hit
+	if hitLimit && len(instances) > 0 {
+		// Store warning in the last instance's description (non-invasive)
+		lastIdx := len(instances) - 1
+		if instances[lastIdx].Description == "" {
+			instances[lastIdx].Description = fmt.Sprintf("[WARNING: Expansion limit of %d reached]", maxExpansions)
+		} else {
+			instances[lastIdx].Description += fmt.Sprintf("\n[WARNING: Expansion limit of %d reached]", maxExpansions)
+		}
 	}
 
 	return instances

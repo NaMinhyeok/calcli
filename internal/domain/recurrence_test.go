@@ -246,3 +246,77 @@ func TestExpandRecurrence_IntervalGreaterThanOne(t *testing.T) {
 		}
 	}
 }
+
+func TestExpandRecurrenceWithLimit(t *testing.T) {
+	start := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
+	event := Event{
+		UID:     "daily-unlimited",
+		Summary: "Daily event without end",
+		Start:   start,
+		End:     start.Add(1 * time.Hour),
+		Recurrence: &Recurrence{
+			Frequency: "DAILY",
+			Interval:  1,
+			// No COUNT or UNTIL - potentially infinite
+		},
+	}
+
+	rangeStart := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	rangeEnd := time.Date(2050, 12, 31, 23, 59, 59, 0, time.UTC) // Very far future
+
+	t.Run("default limit", func(t *testing.T) {
+		instances := ExpandRecurrence(event, rangeStart, rangeEnd)
+
+		if len(instances) > DefaultMaxExpansions {
+			t.Errorf("Expected at most %d instances, got %d", DefaultMaxExpansions, len(instances))
+		}
+
+		// Should hit the limit and add warning
+		if len(instances) == DefaultMaxExpansions {
+			lastInstance := instances[len(instances)-1]
+			if lastInstance.Description == "" {
+				t.Error("Expected warning in last instance description when hitting limit")
+			}
+		}
+	})
+
+	t.Run("custom limit", func(t *testing.T) {
+		customLimit := 100
+		instances := ExpandRecurrenceWithLimit(event, rangeStart, rangeEnd, customLimit)
+
+		if len(instances) > customLimit {
+			t.Errorf("Expected at most %d instances, got %d", customLimit, len(instances))
+		}
+
+		// Should hit the custom limit
+		if len(instances) == customLimit {
+			lastInstance := instances[len(instances)-1]
+			if lastInstance.Description == "" {
+				t.Error("Expected warning in last instance description when hitting custom limit")
+			}
+		}
+	})
+
+	t.Run("limit not reached", func(t *testing.T) {
+		// Event with COUNT that's less than limit
+		count := 10
+		limitedEvent := event
+		limitedEvent.Recurrence = &Recurrence{
+			Frequency: "DAILY",
+			Interval:  1,
+			Count:     &count,
+		}
+
+		instances := ExpandRecurrenceWithLimit(limitedEvent, rangeStart, rangeEnd, 1000)
+
+		if len(instances) != 10 {
+			t.Errorf("Expected 10 instances (COUNT=10), got %d", len(instances))
+		}
+
+		// Should NOT have warning when limit not reached
+		lastInstance := instances[len(instances)-1]
+		if lastInstance.Description != "" {
+			t.Errorf("Did not expect warning when limit not reached, got: %s", lastInstance.Description)
+		}
+	})
+}
