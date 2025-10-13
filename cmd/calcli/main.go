@@ -79,6 +79,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  import      Import events from ICS file\n")
 		fmt.Fprintf(os.Stderr, "  calendars   Print available calendars\n")
 		fmt.Fprintf(os.Stderr, "  calendar    Display month calendar view\n")
+		fmt.Fprintf(os.Stderr, "  interactive Interactive TUI mode\n")
 		fmt.Fprintf(os.Stderr, "  reindex     Clear cache and force reload\n")
 		fmt.Fprintf(os.Stderr, "\nGlobal flags:\n")
 		flag.PrintDefaults()
@@ -271,6 +272,13 @@ func main() {
 		reader := readerFor(calendar)
 
 		if err := app.CalendarHandler(reader, os.Stdout, targetDate); err != nil {
+			exitf(1, "Error: %v\n", err)
+		}
+	case "interactive":
+		_, calendar := loadConfigAndCalendar()
+		reader := readerFor(calendar)
+
+		if err := app.InteractiveHandler(reader); err != nil {
 			exitf(1, "Error: %v\n", err)
 		}
 	case "reindex":
