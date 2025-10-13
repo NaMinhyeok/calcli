@@ -78,6 +78,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  edit        Edit existing event\n")
 		fmt.Fprintf(os.Stderr, "  import      Import events from ICS file\n")
 		fmt.Fprintf(os.Stderr, "  calendars   Print available calendars\n")
+		fmt.Fprintf(os.Stderr, "  calendar    Display month calendar view\n")
 		fmt.Fprintf(os.Stderr, "  reindex     Clear cache and force reload\n")
 		fmt.Fprintf(os.Stderr, "\nGlobal flags:\n")
 		flag.PrintDefaults()
@@ -250,6 +251,26 @@ func main() {
 		cfg, _ := loadConfigAndCalendar()
 
 		if err := app.CalendarsHandler(cfg, os.Stdout); err != nil {
+			exitf(1, "Error: %v\n", err)
+		}
+	case "calendar":
+		calendarFlags := flag.NewFlagSet("calendar", flag.ExitOnError)
+		monthFlag := calendarFlags.String("month", "", "Month to display (YYYY-MM, defaults to current)")
+		calendarFlags.Parse(flag.Args()[1:])
+
+		var targetDate *time.Time
+		if *monthFlag != "" {
+			parsed, err := time.Parse("2006-01", *monthFlag)
+			if err != nil {
+				exitf(2, "Invalid month format: %v\n", err)
+			}
+			targetDate = &parsed
+		}
+
+		_, calendar := loadConfigAndCalendar()
+		reader := readerFor(calendar)
+
+		if err := app.CalendarHandler(reader, os.Stdout, targetDate); err != nil {
 			exitf(1, "Error: %v\n", err)
 		}
 	case "reindex":
